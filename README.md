@@ -20,7 +20,7 @@ const verifyEmail = workflow('email-verification', async (userId) => {
 
   const verified = await Promise.race([
     sleep('1 day'),
-    hook.once(),
+    confirm.once(),
   ])
 
   if (verified) {
