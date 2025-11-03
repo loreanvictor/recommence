@@ -1,33 +1,31 @@
-<img src="./logo-dark.svg#gh-dark-mode-only" height="24px"/>
-<img src="./logo-light.svg#gh-light-mode-only" height="24px"/>
+<br/>
+
+<img src="./logo-dark.svg#gh-dark-mode-only" height="48px"/>
+<img src="./logo-light.svg#gh-light-mode-only" height="48px"/>
 
 <br/>
 
 long running workflows without magic:
 
 ```ts
-import { workflow, step, sleep, hook, Engine } from 'recommence'
+import { workflow, step, sleep, hook } from 'replayed'
 
-const fetchUserData = step(async (userId) => ...)
-const sendVerificationEmail = step(async (data) => ...)
-const markUserEmailAsVerified = step(async (userId, email) => ...)
+const fetchUserData = step(async userid => ...)
+const sendVerificationEmail = step(async (email, name, token) => ...)
+const markEmailVerified = step(async (userid, email) => ...)
 
-const verifyEmail = workflow('email-verification', async (userId) => {
-  const { name, email } = await fetchUserData(userId)
-  const confirm = hook<boolean>()
+const verifyEmail = workflow('verify-email', async (userid, email) => {
+  const { name } = await fetchUserData(userid)
+  const confirm = hook()
 
-  await sendVerificationEmail({ name, email, hook.token })
-
-  const verified = await Promise.race([
+  const approved = await Promise.race([
     sleep('1 day'),
     confirm.once(),
   ])
 
-  if (verified) {
-    await markUserEmailAsVerified(userId, email)
+  if (approved) {
+    await markEmailVerified(userid, email)
   }
 })
 
-const engine = new Engine()
-engine.run(() => verifyEmail('some-dude'))
 ```

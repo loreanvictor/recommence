@@ -1,9 +1,11 @@
 {
-  "name": "recommence",
+  "name": "replayed",
   "version": "0.0.1",
   "description": "long running workflows without magic",
   "keywords": [
     "workflow",
+    "replay",
+    "resumability",
     "durable execution"
   ],
   "homepage": "https://github.com/loreanvictor/recommence#readme",
