@@ -15,11 +15,11 @@ export const step = <T, Fn extends ((...args: any[]) => Promise<T>)>(fn: Fn): Fn
     const run = getRunContext()
     const stepCounter = (run.stepCounter += 1)
 
-    const state = await replay.events.getStepState(run.runId, run.stepCounter)
+    const state = await replay.events.getStepState(run.runId, stepCounter)
 
     if (!state || state.status === 'error' || state.status === 'interrupted') {
       replay.events.log({
-        type: !state ? 'step:started' : state.status === 'interrupted' ? 'step:recovered' : 'step:started',
+        type: !state ? 'step:started' : state.status === 'interrupted' ? 'step:recovered' : 'step:retried',
         runId: run.runId,
         step: stepCounter,
         timestamp: new Date()
@@ -27,7 +27,7 @@ export const step = <T, Fn extends ((...args: any[]) => Promise<T>)>(fn: Fn): Fn
 
       await sleep(0)
       setImmediate(() => {
-        execInStepContext(run.stepCounter, (state?.attempts.length ?? 0) + 1, () => {
+        execInStepContext(stepCounter, (state?.attempts.length ?? 0) + 1, () => {
           fn(...args)
             .then(result => {
               replay.events.log({
