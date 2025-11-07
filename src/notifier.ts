@@ -13,6 +13,10 @@ export interface Notifier {
 export class EventEmitterNotifier {
   private emitter = new EventEmitter()
 
+  constructor() {
+    this.emitter.setMaxListeners(0)
+  }
+
   onRunCompleted(runId: string, listener: (result: any) => void) {
     this.emitter.on(`run:complete:${runId}`, listener)
 

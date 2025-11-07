@@ -25,7 +25,7 @@ export const step = <T, Fn extends ((...args: any[]) => Promise<T>)>(fn: Fn): Fn
         timestamp: new Date()
       })
 
-      await sleep(0)
+      await sleep(1)
       setImmediate(() => {
         execInStepContext(stepCounter, (state?.attempts.length ?? 0) + 1, () => {
           fn(...args)

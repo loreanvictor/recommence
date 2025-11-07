@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import { register, getReplayable } from './registry'
 import { execInRunContext, getReplayContext } from './context'
-import { isPendingError } from './errors'
+import { isPendingError, StepPendingError } from './errors'
 import { ResumptionSource, RunStatus } from './log'
 import { sequencer } from './sequencer'
 
@@ -30,7 +30,7 @@ const play = async (
   execInRunContext(
     runId,
     replayableId,
-    (src?) => resume(runId, src),
+    (src?) => setImmediate(() => resume(runId, src)),
     seq.turn,
     () => fn(...args)
       .then(result => {
@@ -43,13 +43,31 @@ const play = async (
 
         notifier.notifyComplete(runId, result)
       })
-      .catch(error => {
+      .catch(async error => {
         if (isPendingError(error)) {
           events.log({
             type: 'run:paused',
             runId,
             timestamp: new Date()
           })
+
+          if (error instanceof StepPendingError) {
+            //
+            // TODO: further analyse this. this is needed because sometimes
+            //       steps are executed in parallel, and so immediately when the first
+            //       one resumes the second may also finish, but it can't resume
+            //       and the run might consider throwing a pending error again.
+            //       That said, this feels a bit hacky to me, and I'm not sure
+            //       whether we could do something neater or not. For example the same
+            //       issue might happen with hooks as well (though not as commonly),
+            //       and there is not an equally easy way to fix that (since hooks can
+            //       be triggered multiple times).
+            //
+            const state = await events.getStepState(runId, error.step)
+            if (state && (state.status === 'completed' || state.status === 'failed')) {
+              resume(runId, { type: 'step:completed', step: error.step, result: state.result })
+            }
+          }
         } else {
           events.log({
             type: 'run:failed',

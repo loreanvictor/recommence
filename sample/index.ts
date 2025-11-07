@@ -9,35 +9,27 @@ const stepA = step(async () => (console.log('A'), 'A'))
 const stepB = step(async () => (await sleep(100), console.log('B'), 'B'))
 const stepC = step(async () => (await sleep(150), 42))
 
-const res: string[] = []
-
 const sample = replayable('sample', async () => {
-  // const confirm = await hook('confirm')
-  await once(() => console.log('O'))
-  // await stepA()
-  // await stepB()
+  await stepA()
+  await stepA()
 
-  const val = await Promise.race([stepB(), stepA()])
-  res.push(val)
-  await stepC()
-  // const value = await Promise.race([
-  //   confirm.once(),
-  //   stepC(),
-  // ])
+  await Promise.all([
+    stepA(),
+    stepA(),
+  ])
 
-  // console.log('D', value)
+  console.log('DONE!')
 })
 
-// sample()
-sample().then(() => console.log(res))
+sample()
 
-setTimeout(() => trigger({ id: 'confirm' }, 64), 200)
+// setTimeout(() => trigger({ id: 'confirm' }, 64), 200)
 
 // ---- DEBUG ----
 
-// import { getReplayContext } from '../src'
+import { getReplayContext } from '../src'
 
-// const context = getReplayContext()
-// setTimeout(() => {
-//   console.log(context.events)
-// }, 500)
+const context = getReplayContext()
+setTimeout(() => {
+  console.log(context.events)
+}, 500)
