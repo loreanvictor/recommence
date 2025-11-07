@@ -4,9 +4,10 @@ import { register, getReplayable } from './registry'
 import { execInRunContext, getReplayContext } from './context'
 import { isPendingError } from './errors'
 import { ResumptionSource, RunStatus } from './log'
+import { sequencer } from './sequencer'
 
 
-const play = (
+const play = async (
   replayableId: string,
   runId: string,
   args: any[],
@@ -15,6 +16,7 @@ const play = (
 ) => {
   const fn = getReplayable(replayableId)
   const { events, notifier } = getReplayContext()
+  const seq = sequencer(await events.getFinishedWorkEvents(runId))
 
   events.log({
     type: !status ? 'run:started' : status === 'paused' ? 'run:resumed' : 'run:recovered',
@@ -29,6 +31,7 @@ const play = (
     runId,
     replayableId,
     (src?) => resume(runId, src),
+    seq.turn,
     () => fn(...args)
       .then(result => {
         events.log({

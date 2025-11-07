@@ -5,33 +5,39 @@ import { inMemContext } from '../src/adapters/mem'
 
 use(inMemContext())
 
-const stepA = step(async () => { console.log('A') })
-const stepB = step(async () => { console.log('B') })
-const stepC = step(async () => (await sleep(250), console.log('C'), 42))
+const stepA = step(async () => (console.log('A'), 'A'))
+const stepB = step(async () => (await sleep(100), console.log('B'), 'B'))
+const stepC = step(async () => (await sleep(150), 42))
+
+const res: string[] = []
 
 const sample = replayable('sample', async () => {
-  const confirm = await hook('confirm')
+  // const confirm = await hook('confirm')
   await once(() => console.log('O'))
-  await stepA()
-  await stepB()
+  // await stepA()
+  // await stepB()
 
-  const value = await Promise.race([
-    confirm.once(),
-    stepC(),
-  ])
+  const val = await Promise.race([stepB(), stepA()])
+  res.push(val)
+  await stepC()
+  // const value = await Promise.race([
+  //   confirm.once(),
+  //   stepC(),
+  // ])
 
-  console.log('D', value)
+  // console.log('D', value)
 })
 
-sample()
+// sample()
+sample().then(() => console.log(res))
 
 setTimeout(() => trigger({ id: 'confirm' }, 64), 200)
 
 // ---- DEBUG ----
 
-import { getReplayContext } from '../src'
+// import { getReplayContext } from '../src'
 
-const context = getReplayContext()
-setTimeout(() => {
-  console.log(context.events)
-}, 500)
+// const context = getReplayContext()
+// setTimeout(() => {
+//   console.log(context.events)
+// }, 500)

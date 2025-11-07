@@ -38,8 +38,11 @@ export const once = async <T>(fn: () => T | Promise<T>) => {
       throw error
     }
   } else if (state.status === 'failed') {
+    await run.turn(state.finishSeq!)
     throw state.error
   } else {
+    await run.turn(state.finishSeq!)
+
     return state.result as T
   }
 }

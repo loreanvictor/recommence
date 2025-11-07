@@ -13,7 +13,7 @@ export const step = <T, Fn extends ((...args: any[]) => Promise<T>)>(fn: Fn): Fn
     }
 
     const run = getRunContext()
-    run.stepCounter += 1
+    const stepCounter = (run.stepCounter += 1)
 
     const state = await replay.events.getStepState(run.runId, run.stepCounter)
 
@@ -21,7 +21,7 @@ export const step = <T, Fn extends ((...args: any[]) => Promise<T>)>(fn: Fn): Fn
       replay.events.log({
         type: !state ? 'step:started' : state.status === 'interrupted' ? 'step:recovered' : 'step:started',
         runId: run.runId,
-        step: run.stepCounter,
+        step: stepCounter,
         timestamp: new Date()
       })
 
@@ -33,7 +33,7 @@ export const step = <T, Fn extends ((...args: any[]) => Promise<T>)>(fn: Fn): Fn
               replay.events.log({
                 type: 'step:completed',
                 runId: run.runId,
-                step: run.stepCounter,
+                step: stepCounter,
                 timestamp: new Date(),
                 result
               })
@@ -45,7 +45,7 @@ export const step = <T, Fn extends ((...args: any[]) => Promise<T>)>(fn: Fn): Fn
                 replay.events.log({
                   type: 'step:failed',
                   runId: run.runId,
-                  step: run.stepCounter,
+                  step: stepCounter,
                   timestamp: new Date(),
                   error
                 })
@@ -55,7 +55,7 @@ export const step = <T, Fn extends ((...args: any[]) => Promise<T>)>(fn: Fn): Fn
                 replay.events.log({
                   type: 'step:error',
                   runId: run.runId,
-                  step: run.stepCounter,
+                  step: stepCounter,
                   timestamp: new Date(),
                   error
                 })
@@ -82,8 +82,11 @@ export const step = <T, Fn extends ((...args: any[]) => Promise<T>)>(fn: Fn): Fn
       await sleep(0)
       throw new StepPendingError(run.replayableId, run.runId, run.stepCounter)
     } else if (state.status === 'failed') {
+      await run.turn(state.finishSeq!)
       throw state.error
     } else {
+      await run.turn(state.finishSeq!)
+
       return state.result as T
     }
   }) as Fn

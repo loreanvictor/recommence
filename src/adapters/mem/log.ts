@@ -1,12 +1,16 @@
-import { ReplayEvent, EventLog, RunStatus, isRunEvent, isStepEvent, StepStatus, HookBoundEvent, HookTriggeredEvent, RunEvent, StepEvent, RunState, StepState } from '../../log'
+import {
+  ReplayEvent, EventLog, RunStatus, isRunEvent, isStepEvent, StepStatus, HookBoundEvent, HookTriggeredEvent, RunEvent,
+  StepEvent, RunState, StepState, isFinishedWorkEvent, SequencedReplayEvent, FinishedWorkEvent
+} from '../../log'
+import { SequencedEvent } from '../../sequencer'
 
 
 export class InMemLog implements EventLog {
-  events: ReplayEvent[] = []
+  events: SequencedReplayEvent[] = []
+  seq = 0
 
   async log(...events: ReplayEvent[]): Promise<void> {
-    this.events.push(...events)
-    this.events.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+    this.events.push(...events.map(e => ({ ...e, seq: ++this.seq })))
   }
 
   async getRunState(runId: string): Promise<RunState | undefined> {
@@ -33,7 +37,8 @@ export class InMemLog implements EventLog {
       replayableId: started.replayableId,
       args: started.args,
       status,
-      result: completed?.result
+      result: completed?.result,
+      finishSeq: completed?.seq ?? failed?.seq,
     }
   }
 
@@ -68,6 +73,7 @@ export class InMemLog implements EventLog {
       status,
       attempts: attempts.map(([start, error]) => ({on: start.timestamp, error})),
       result: completed?.result,
+      finishSeq: completed?.seq ?? failed?.seq,
     }
   }
 
@@ -77,10 +83,10 @@ export class InMemLog implements EventLog {
       .map(e => ({ runId: (e as HookBoundEvent).runId, on: e.timestamp }))
   }
 
-  async getHookTriggers(token: string) {
+  async getHookTriggers(runId: string, token: string) {
     return this.events
-      .filter(e => e.type === 'hook:triggered' && e.token === token)
-      .map(e => ({ value: (e as HookTriggeredEvent).value, on: e.timestamp }))
+      .filter(e => e.type === 'hook:triggered' && e.token === token && e.runId === runId)
+      .map(e => ({ value: (e as HookTriggeredEvent).value, on: e.timestamp, seq: e.seq }))
   }
 
   async isHookBound(token: string, runId: string) {
@@ -107,5 +113,11 @@ export class InMemLog implements EventLog {
           && ee.step === e.step)
       ).map(async e => (await this.getStepState((e as StepEvent).runId!, (e as StepEvent).step!))!)
     )
+  }
+
+  async getFinishedWorkEvents(runId: string) {
+    return this.events.filter(
+      e => e.runId === runId && isFinishedWorkEvent(e)
+    ) as (FinishedWorkEvent & SequencedEvent)[]
   }
 }

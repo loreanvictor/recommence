@@ -27,7 +27,7 @@ export const hook = async <T>(hookId?: string): Promise<Hook<T>> => {
     events.log({ type: 'hook:bound', hookId, token, runId: run.runId, timestamp: new Date() })
   }
 
-  const triggers = (await events.getHookTriggers(token))[Symbol.iterator]()
+  const triggers = (await events.getHookTriggers(run.runId, token))[Symbol.iterator]()
 
   const ref = {
     id: hookId,
@@ -39,7 +39,9 @@ export const hook = async <T>(hookId?: string): Promise<Hook<T>> => {
         await sleep(0)
         throw new HookPendingError(hookId)
       } else {
-        return { done: false, value: trigger.value as T } as { done: false, value: T}
+        await run.turn(trigger.seq)
+
+        return { done: false, value: trigger.value as T } as { done: false, value: T }
       }
     },
     once: async () => {
@@ -57,8 +59,10 @@ export type HookIdentifier = HookByToken | HookById
 export const trigger = async (hid: HookIdentifier, value?) => {
   const token = (hid as HookByToken).token ?? hookIdToToken((hid as HookById).id)
   const { events } = getReplayContext()
-  events.log({ type: 'hook:triggered', token, timestamp: new Date(), value })
 
   const bindings = await events.getHookBindings(token)
-  bindings.forEach(binding => resume(binding.runId, { type: 'hook:triggered', token, value }))
+  bindings.forEach(binding => {
+    events.log({ type: 'hook:triggered', runId: binding.runId, token, timestamp: new Date(), value })
+    resume(binding.runId, { type: 'hook:triggered', token, value })
+  })
 }

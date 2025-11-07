@@ -1,3 +1,9 @@
+import { step, replayable } from '../'
+
+
 test('everything is exported properly', () => {
-  console.log('WE ARE HERE!')
+  // TODO: complete this
+
+  expect(step).toBeDefined()
+  expect(replayable).toBeDefined()
 })

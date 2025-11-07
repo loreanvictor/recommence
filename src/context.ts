@@ -15,6 +15,7 @@ export interface RunContext {
   stepCounter: number
   hookCounter: number
   resume: (source?: ResumptionSource) => void
+  turn: (step: number) => Promise<void>
 }
 
 export interface StepContext {
@@ -37,9 +38,10 @@ export const execInRunContext = (
   runId: string,
   replayableId: string,
   resume: () => void,
+  turn: (step: number) => Promise<void>,
   fn: () => void
 ) =>
-  runCtx.run({ runId, replayableId, resume, stepCounter: 0, hookCounter: 0 }, fn)
+  runCtx.run({ runId, replayableId, resume, turn, stepCounter: 0, hookCounter: 0 }, fn)
 
 export const execInStepContext = (step: number, attempt: number, fn: () => void) =>
   stepCtx.run({ step, attempt }, fn)

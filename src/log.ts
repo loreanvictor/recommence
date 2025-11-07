@@ -1,3 +1,5 @@
+import { SequencedEvent } from './sequencer'
+
 export type StepEventType =
   | 'step:started'
   | 'step:completed'
@@ -32,6 +34,7 @@ export interface RunState {
   error?: any
   args: any[]
   status: RunStatus
+  finishSeq?: number
 }
 
 export type StepStatus = 'running' | 'completed' | 'failed' | 'error' | 'interrupted'
@@ -43,6 +46,7 @@ export interface StepState {
   status: StepStatus
   attempts: {on: Date, error?: any}[]
   error?: any
+  finishSeq?: number
 }
 
 export interface HookBinding {
@@ -53,6 +57,7 @@ export interface HookBinding {
 export interface HookTrigger {
   on: Date,
   value: any,
+  seq: number,
 }
 
 export interface BaseEvent {
@@ -171,11 +176,11 @@ export const isStepEvent = (event: any): event is StepEvent => {
 export interface BaseHookEvent extends BaseEvent {
   type: HookEventType
   token: string
+  runId: string
 }
 
 export interface HookBoundEvent extends BaseHookEvent {
   type: 'hook:bound'
-  runId: string
   hookId: string
 }
 
@@ -186,11 +191,17 @@ export interface HookTriggeredEvent extends BaseHookEvent {
 
 export type HookEvent = HookBoundEvent | HookTriggeredEvent
 
-export const isHookEvent = (event: any): event is HookEvent => {
-  return event.type === 'hook:bound' || event.type === 'hook:invoke'
+export const isHookEvent = (event: BaseEvent): event is HookEvent => {
+  return event.type === 'hook:bound' || event.type === 'hook:triggered'
 }
 
 export type ReplayEvent = RunEvent | StepEvent | HookEvent
+export type FinishedWorkEvent = StepCompletedEvent | StepFailedEvent | HookTriggeredEvent
+export type SequencedReplayEvent = ReplayEvent & SequencedEvent
+
+export const isFinishedWorkEvent = (event: BaseEvent): event is FinishedWorkEvent => {
+  return event.type === 'step:completed' || event.type === 'step:failed' || event.type === 'hook:triggered'
+}
 
 export interface EventLog {
   log(...events: ReplayEvent[]): Promise<void>
@@ -200,8 +211,9 @@ export interface EventLog {
 
   isHookBound(token: string, runId: string): Promise<boolean>
   getHookBindings(token: string): Promise<HookBinding[]>
-  getHookTriggers(token: string): Promise<HookTrigger[]>
+  getHookTriggers(runId: string, token: string): Promise<HookTrigger[]>
 
   getPendingRuns(): Promise<RunState[]>
   getPendingSteps(runId: string): Promise<StepState[]>
+  getFinishedWorkEvents(runId: string): Promise<(FinishedWorkEvent & SequencedEvent)[]>
 }
